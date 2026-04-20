@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reporte Semanal — GDS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --green:   #6a9785;
+      --green-h: #7aaa96;
+      --dark:    #313842;
+      --card:    #3a4251;
+      --card-h:  #424f62;
+      --text:    #f0f2f5;
+      --muted:   #8fa0b0;
+      --error:   #ff6b6b;
+      --r:       10px;
+      --ease:    cubic-bezier(.4,0,.2,1);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; }
+    body { font-family: 'DM Sans', sans-serif; background: var(--dark); color: var(--text); -webkit-font-smoothing: antialiased; }
+
+    /* ── HEADER ─── */
+    .hdr {
+      position: fixed; inset: 0 0 auto 0; z-index: 200;
+      height: 52px; display: flex; align-items: center; justify-content: space-between;
+      padding: 0 18px;
+      background: rgba(49,56,66,.97);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255,255,255,.05);
+    }
+    .hdr-brand { font-size: 13px; font-weight: 700; color: var(--green-h); }
+    .hdr-info  { font-size: 12px; color: var(--muted); font-weight: 500; }
+
+    /* ── PROGRESS ─── */
+    .prog-track { position: fixed; top: 52px; left: 0; right: 0; z-index: 199; height: 3px; background: rgba(255,255,255,.07); }
+    .prog-fill  { height: 100%; background: var(--green); transition: width .5s var(--ease); width: 0; }
+
+    /* ── SCREENS ─── */
+    .scr {
+      position: fixed; inset: 55px 0 0 0;
+      display: flex; flex-direction: column; align-items: center;
+      padding: 24px 18px 60px;
+      overflow-y: auto; overflow-x: hidden;
+      opacity: 0; pointer-events: none;
+    }
+    .scr.on { opacity: 1; pointer-events: all; }
+    .scr.in-fwd  { animation: inFwd  .36s var(--ease) forwards; }
+    .scr.in-bwd  { animation: inBwd  .36s var(--ease) forwards; }
+    .scr.out-fwd { animation: outFwd .24s var(--ease) forwards; }
+    .scr.out-bwd { animation: outBwd .24s var(--ease) forwards; }
+
+    @keyframes inFwd  { from{opacity:0;transform:translateY(24px)}  to{opacity:1;transform:translateY(0)} }
+    @keyframes inBwd  { from{opacity:0;transform:translateY(-24px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes outFwd { from{opacity:1;transform:translateY(0)} to{opacity:0;transform:translateY(-24px)} }
+    @keyframes outBwd { from{opacity:1;transform:translateY(0)} to{opacity:0;transform:translateY(24px)}  }
+
+    /* ── INTRO ─── */
+    .intro-wrap { max-width: 480px; width: 100%; padding-top: 12px; }
+    .intro-brand { font-size: 18px; font-weight: 700; color: var(--green-h); margin-bottom: 20px; }
+    .intro-title { font-size: clamp(22px,5vw,30px); font-weight: 700; line-height: 1.2; margin-bottom: 10px; }
+    .intro-sub   { font-size: 14px; color: var(--muted); margin-bottom: 32px; line-height: 1.5; }
+
+    .period-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 28px; }
+    .field-label { font-size: 11px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; color: var(--green); margin-bottom: 7px; }
+
+    /* ── INPUTS ─── */
+    input.fi, textarea.fi {
+      width: 100%; background: var(--card); border: 2px solid transparent; border-radius: var(--r);
+      padding: 13px 15px; font-family: 'DM Sans', sans-serif; font-size: 15px; color: var(--text);
+      outline: none; transition: border-color .2s, background .2s; -webkit-appearance: none;
+      caret-color: var(--green);
+    }
+    input[type="date"].fi { color-scheme: dark; }
+    input.fi::placeholder, textarea.fi::placeholder { color: rgba(143,160,176,.35); }
+    input.fi:focus, textarea.fi:focus { border-color: var(--green); background: var(--card-h); }
+    input.fi.err, textarea.fi.err { border-color: var(--error); }
+    textarea.fi { min-height: 90px; resize: vertical; line-height: 1.6; font-size: 14px; }
+
+    /* ── CLIENT SCREEN ─── */
+    .client-wrap { max-width: 520px; width: 100%; }
+
+    .client-header {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 20px;
+    }
+    .client-num {
+      width: 30px; height: 30px; border-radius: 50%;
+      background: rgba(106,151,133,.2); border: 1.5px solid var(--green);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700; color: var(--green); flex-shrink: 0;
+    }
+    .client-header-label { font-size: 12px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--green); }
+
+    .client-name-wrap { margin-bottom: 18px; }
+
+    /* ── METRICS GRID ─── */
+    .metrics-label { font-size: 11px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+    .metrics-grid  { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px; }
+
+    .metric-box { background: var(--card); border-radius: var(--r); padding: 12px 14px; }
+    .metric-box-label { font-size: 10.5px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+
+    .metric-input-wrap { display: flex; align-items: center; gap: 4px; }
+    .metric-prefix { font-size: 15px; font-weight: 600; color: var(--muted); }
+
+    input.metric-fi {
+      flex: 1; background: transparent; border: none; outline: none;
+      font-family: 'DM Sans', sans-serif; font-size: 20px; font-weight: 600;
+      color: var(--text); caret-color: var(--green); width: 100%;
+      -webkit-appearance: none;
+    }
+    input.metric-fi::placeholder { color: rgba(143,160,176,.3); font-weight: 400; font-size: 18px; }
+    input.metric-fi::-webkit-outer-spin-button,
+    input.metric-fi::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+    .tasa-value { font-size: 22px; font-weight: 700; color: var(--green-h); }
+    .tasa-value.zero { color: var(--muted); }
+
+    /* ── NOTES ─── */
+    .notes-wrap { margin-bottom: 6px; }
+    .optional-tag { font-size: 10px; color: var(--muted); font-weight: 400; margin-left: 5px; text-transform: none; letter-spacing: 0; }
+
+    /* ── ERROR ─── */
+    .err-msg { color: var(--error); font-size: 12px; margin-top: 6px; display: none; }
+    .err-msg.show { display: block; }
+
+    /* ── DIVIDER ─── */
+    .divider { height: 1px; background: rgba(255,255,255,.07); margin: 18px 0; }
+
+    /* ── BUTTONS ─── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 12px 22px; border-radius: 999px;
+      font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600;
+      cursor: pointer; border: none;
+      transition: background .2s, transform .15s, border-color .2s, color .2s;
+      white-space: nowrap;
+    }
+    .btn-pri { background: var(--green); color: #fff; }
+    .btn-pri:hover  { background: var(--green-h); }
+    .btn-pri:active { transform: scale(.97); }
+    .btn-sec { background: transparent; color: var(--muted); border: 2px solid rgba(255,255,255,.1); }
+    .btn-sec:hover  { border-color: rgba(255,255,255,.22); color: var(--text); }
+    .btn-ghost { background: rgba(106,151,133,.1); color: var(--green-h); border: 1.5px solid rgba(106,151,133,.3); }
+    .btn-ghost:hover { background: rgba(106,151,133,.2); }
+
+    /* ── NAV ROW ─── */
+    .nav-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 20px; flex-wrap: wrap; }
+    .nav-right { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    /* ── SUCCESS ─── */
+    .done-wrap { max-width: 420px; width: 100%; display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 20px; }
+    .check-ring {
+      width: 72px; height: 72px; border-radius: 50%;
+      border: 2.5px solid var(--green); background: rgba(106,151,133,.12);
+      display: flex; align-items: center; justify-content: center; margin-bottom: 22px;
+    }
+    .done-title { font-size: 36px; font-weight: 700; margin-bottom: 12px; }
+    .done-text  { font-size: 14px; color: var(--muted); line-height: 1.65; margin-bottom: 28px; }
+    .done-btn-row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+
+    /* ── PREVIEW ─── */
+    .preview-box {
+      background: var(--card); border-radius: var(--r);
+      padding: 14px 16px; margin-top: 18px; width: 100%; max-width: 520px;
+      font-size: 13px; color: var(--muted); line-height: 1.7;
+      white-space: pre-wrap; word-break: break-word;
+      max-height: 220px; overflow-y: auto;
+      border: 1px solid rgba(255,255,255,.06);
+    }
+
+    @media (max-width: 400px) {
+      .metrics-grid { grid-template-columns: 1fr 1fr; }
+      .btn { padding: 11px 16px; font-size: 13px; }
+    }
+    @supports (padding-bottom: env(safe-area-inset-bottom)) {
+      .scr { padding-bottom: calc(60px + env(safe-area-inset-bottom)); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="hdr">
+  <span class="hdr-brand">Growth Dental Systems</span>
+  <span class="hdr-info" id="hdrInfo"></span>
+</header>
+<div class="prog-track"><div class="prog-fill" id="prog"></div></div>
+
+<!-- ══ INTRO / PERÍODO ══ -->
+<section class="scr on" id="scr-intro">
+  <div class="intro-wrap">
+    <div class="intro-brand">Growth Dental Systems</div>
+    <h1 class="intro-title">Reporte Semanal</h1>
+    <p class="intro-sub">Ingresá el período del reporte y luego cargá cada cliente.</p>
+
+    <div class="period-grid">
+      <div>
+        <div class="field-label">Desde</div>
+        <input type="date" class="fi" id="dateFrom">
+      </div>
+      <div>
+        <div class="field-label">Hasta</div>
+        <input type="date" class="fi" id="dateTo">
+      </div>
+    </div>
+    <div class="err-msg" id="errDates">Completá ambas fechas.</div>
+
+    <button class="btn btn-pri" onclick="startReport()">
+      Cargar clientes
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+      </svg>
+    </button>
+  </div>
+</section>
+
+<!-- ══ CLIENT SCREENS (dinámicos) ══ -->
+<div id="clientRoot"></div>
+
+<!-- ══ SUCCESS ══ -->
+<section class="scr" id="scr-done">
+  <div class="done-wrap">
+    <div class="check-ring">
+      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#6a9785" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="20 6 9 17 4 12"/>
+      </svg>
+    </div>
+    <h2 class="done-title">¡Reporte listo!</h2>
+    <p class="done-text">El mensaje se copió y se abrió WhatsApp. Pegalo en el grupo de Ads.</p>
+    <div class="done-btn-row">
+      <button class="btn btn-ghost" onclick="copyMsg()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        Copiar mensaje
+      </button>
+      <button class="btn btn-pri" onclick="sendWA()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        Abrir WhatsApp
+      </button>
+    </div>
+    <div class="preview-box" id="msgPreview"></div>
+  </div>
+</section>
+
+<script>
+/* ═══════════════════════════════════════════
+   ESTADO
+   ═══════════════════════════════════════════ */
+let period  = { from: '', to: '' };
+let clients = [];   // [{ name, leads, cpa, agendas, notas }]
+let cur     = -1;   // -1=intro, 0..n=clientes, n+1=done
+let busy    = false;
+let builtMsg = '';
+
+/* ═══════════════════════════════════════════
+   HELPERS DE PANTALLA
+   ═══════════════════════════════════════════ */
+function scrEl(idx) {
+  if (idx === -1) return document.getElementById('scr-intro');
+  if (idx === 'done') return document.getElementById('scr-done');
+  return document.getElementById(`scr-c${idx}`);
+}
+
+function go(to, fwd) {
+  if (busy) return;
+  busy = true;
+
+  const fromEl = scrEl(cur);
+  const toEl   = scrEl(to);
+  if (!toEl) { busy = false; return; }
+
+  if (fromEl) {
+    fromEl.classList.remove('on', 'in-fwd', 'in-bwd');
+    fromEl.classList.add(fwd ? 'out-fwd' : 'out-bwd');
+    fromEl.addEventListener('animationend', () => fromEl.classList.remove('out-fwd','out-bwd'), { once: true });
+  }
+
+  setTimeout(() => {
+    cur = to;
+    updateHUD();
+    toEl.classList.remove('out-fwd','out-bwd','in-fwd','in-bwd');
+    toEl.classList.add('on', fwd ? 'in-fwd' : 'in-bwd');
+    toEl.addEventListener('animationend', () => {
+      toEl.classList.remove('in-fwd','in-bwd');
+      // focus first input
+      if (typeof cur === 'number' && cur >= 0) {
+        const fi = document.querySelector(`#scr-c${cur} input.fi, #scr-c${cur} textarea.fi`);
+        if (fi) fi.focus();
+      }
+      busy = false;
+    }, { once: true });
+  }, 130);
+}
+
+/* ═══════════════════════════════════════════
+   HUD
+   ═══════════════════════════════════════════ */
+function updateHUD() {
+  const info = document.getElementById('hdrInfo');
+  const prog = document.getElementById('prog');
+
+  if (cur === -1) {
+    info.textContent = '';
+    prog.style.width = '0%';
+  } else if (cur === 'done') {
+    info.textContent = `${clients.length} clientes`;
+    prog.style.width = '100%';
+  } else {
+    info.textContent = `Cliente ${cur + 1} de ${clients.length}`;
+    prog.style.width = `${((cur + 1) / Math.max(clients.length, 1)) * 100}%`;
+  }
+}
+
+/* ═══════════════════════════════════════════
+   CREAR PANTALLA DE CLIENTE
+   ═══════════════════════════════════════════ */
+function buildClientScreen(idx) {
+  const existing = document.getElementById(`scr-c${idx}`);
+  if (existing) return; // ya existe
+
+  const el = document.createElement('section');
+  el.className = 'scr';
+  el.id = `scr-c${idx}`;
+
+  const num = idx + 1;
+
+  el.innerHTML = `
+    <div class="client-wrap">
+      <div class="client-header">
+        <div class="client-num">${num}</div>
+        <div class="client-header-label">Cliente ${num}</div>
+      </div>
+
+      <!-- Nombre -->
+      <div class="client-name-wrap">
+        <div class="field-label">Nombre de la clínica</div>
+        <input class="fi" type="text" id="c${idx}-name" placeholder="Ej: AlDent" autocomplete="off"
+          oninput="syncClient(${idx})">
+        <div class="err-msg" id="c${idx}-err-name">Ingresá el nombre de la clínica.</div>
+      </div>
+
+      <!-- Métricas -->
+      <div class="metrics-label">Métricas de la semana</div>
+      <div class="metrics-grid">
+        <div class="metric-box">
+          <div class="metric-box-label">Leads</div>
+          <div class="metric-input-wrap">
+            <input class="metric-fi" type="number" min="0" id="c${idx}-leads"
+              placeholder="0" oninput="syncClient(${idx}); calcTasa(${idx})">
+          </div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-box-label">CPA</div>
+          <div class="metric-input-wrap">
+            <span class="metric-prefix">$</span>
+            <input class="metric-fi" type="number" min="0" id="c${idx}-cpa"
+              placeholder="0" oninput="syncClient(${idx})">
+          </div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-box-label">Agendas</div>
+          <div class="metric-input-wrap">
+            <input class="metric-fi" type="number" min="0" id="c${idx}-agendas"
+              placeholder="0" oninput="syncClient(${idx}); calcTasa(${idx})">
+          </div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-box-label">Tasa de agend.</div>
+          <div class="tasa-value zero" id="c${idx}-tasa">0%</div>
+        </div>
+      </div>
+
+      <div class="err-msg" id="c${idx}-err-leads">Completá al menos Leads y Agendas.</div>
+
+      <!-- Notas -->
+      <div class="notes-wrap">
+        <div class="field-label">Ajustes / Observaciones <span class="optional-tag">— opcional</span></div>
+        <textarea class="fi" id="c${idx}-notas"
+          placeholder="Ej: Modificamos el objetivo de la campaña a Ventas..."
+          oninput="syncClient(${idx})"></textarea>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="nav-row">
+        <button type="button" class="btn btn-sec" onclick="goBack()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+          </svg>
+          Atrás
+        </button>
+        <div class="nav-right">
+          <button type="button" class="btn btn-ghost" onclick="addClient()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Agregar cliente
+          </button>
+          <button type="button" class="btn btn-pri" onclick="finishReport()">
+            Finalizar reporte
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>`;
+
+  document.getElementById('clientRoot').appendChild(el);
+}
+
+/* ═══════════════════════════════════════════
+   SYNC & CÁLCULOS
+   ═══════════════════════════════════════════ */
+function syncClient(idx) {
+  if (!clients[idx]) clients[idx] = {};
+  clients[idx].name   = val(`c${idx}-name`);
+  clients[idx].leads  = val(`c${idx}-leads`);
+  clients[idx].cpa    = val(`c${idx}-cpa`);
+  clients[idx].agendas = val(`c${idx}-agendas`);
+  clients[idx].notas  = val(`c${idx}-notas`);
+}
+
+function calcTasa(idx) {
+  const leads   = parseFloat(val(`c${idx}-leads`))  || 0;
+  const agendas = parseFloat(val(`c${idx}-agendas`)) || 0;
+  const tasa    = leads > 0 ? Math.round((agendas / leads) * 100) : 0;
+  const el      = document.getElementById(`c${idx}-tasa`);
+  if (el) {
+    el.textContent = `${tasa}%`;
+    el.classList.toggle('zero', tasa === 0);
+  }
+  if (clients[idx]) clients[idx].tasa = tasa;
+}
+
+function val(id) {
+  const el = document.getElementById(id);
+  return el ? el.value.trim() : '';
+}
+
+/* ═══════════════════════════════════════════
+   NAVEGACIÓN
+   ═══════════════════════════════════════════ */
+function startReport() {
+  const from = document.getElementById('dateFrom').value;
+  const to   = document.getElementById('dateTo').value;
+  const errEl = document.getElementById('errDates');
+
+  if (!from || !to) {
+    errEl.classList.add('show');
+    return;
+  }
+  errEl.classList.remove('show');
+  period.from = from;
+  period.to   = to;
+
+  // Crear primer cliente si no existe
+  if (clients.length === 0) {
+    clients.push({});
+    buildClientScreen(0);
+  }
+  go(0, true);
+}
+
+function addClient() {
+  // Validar cliente actual
+  syncClient(cur);
+  if (!validateClient(cur)) return;
+
+  const newIdx = clients.length;
+  clients.push({});
+  buildClientScreen(newIdx);
+  updateHUD();
+  go(newIdx, true);
+}
+
+function goBack() {
+  if (typeof cur === 'number' && cur > 0) {
+    go(cur - 1, false);
+  } else if (cur === 0) {
+    go(-1, false);
+  }
+}
+
+function validateClient(idx) {
+  syncClient(idx);
+  const c = clients[idx];
+  const nameEl  = document.getElementById(`c${idx}-err-name`);
+  const leadsEl = document.getElementById(`c${idx}-err-leads`);
+  let ok = true;
+
+  if (!c.name) {
+    nameEl?.classList.add('show');
+    document.getElementById(`c${idx}-name`)?.focus();
+    ok = false;
+  } else {
+    nameEl?.classList.remove('show');
+  }
+
+  if (c.leads === '' || c.agendas === '') {
+    leadsEl?.classList.add('show');
+    ok = false;
+  } else {
+    leadsEl?.classList.remove('show');
+  }
+
+  return ok;
+}
+
+/* ═══════════════════════════════════════════
+   FINALIZAR REPORTE
+   ═══════════════════════════════════════════ */
+function finishReport() {
+  syncClient(cur);
+  if (!validateClient(cur)) return;
+
+  // Recalcular tasas de todos
+  clients.forEach((c, i) => calcTasa(i));
+
+  builtMsg = buildMessage();
+
+  // Copiar al portapapeles
+  try { navigator.clipboard.writeText(builtMsg); } catch(e) {}
+
+  document.getElementById('msgPreview').textContent = builtMsg;
+
+  sendWA();
+  go('done', true);
+}
+
+/* ═══════════════════════════════════════════
+   CONSTRUIR MENSAJE
+   ═══════════════════════════════════════════ */
+function buildMessage() {
+  const fmt = d => {
+    if (!d) return '';
+    const [y,m,dd] = d.split('-');
+    return `${dd}/${m}/${String(y).slice(2)}`;
+  };
+
+  const lines = [`Reporte Semanal ${fmt(period.from)} - ${fmt(period.to)}`, ''];
+
+  clients.forEach((c, i) => {
+    if (!c.name) return;
+    const leads   = c.leads   || '0';
+    const cpa     = c.cpa     || '0';
+    const agendas = c.agendas || '0';
+    const leads_n = parseFloat(leads) || 0;
+    const ag_n    = parseFloat(agendas) || 0;
+    const tasa    = leads_n > 0 ? Math.round((ag_n / leads_n) * 100) : 0;
+
+    lines.push(`${c.name}:`);
+    lines.push(`Leads: ${leads}`);
+    lines.push(`CPA: $${cpa}`);
+    lines.push(`Agendas: ${agendas}`);
+    lines.push(`Tasa de Agendamientos: ${tasa}%`);
+    if (c.notas && c.notas.trim()) {
+      lines.push(`Ajustes: ${c.notas.trim()}`);
+    }
+    if (i < clients.length - 1) lines.push('');
+  });
+
+  return lines.join('\n');
+}
+
+function sendWA() {
+  const msg = builtMsg || buildMessage();
+  window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+function copyMsg() {
+  const msg = builtMsg || buildMessage();
+  navigator.clipboard.writeText(msg).then(() => {
+    const btn = event.currentTarget;
+    const orig = btn.innerHTML;
+    btn.textContent = '¡Copiado!';
+    setTimeout(() => { btn.innerHTML = orig; }, 1800);
+  }).catch(() => {});
+}
+
+/* ═══════════════════════════════════════════
+   INIT
+   ═══════════════════════════════════════════ */
+updateHUD();
+
+// Set default dates (this week Mon-Sun)
+const today = new Date();
+const day   = today.getDay();
+const mon   = new Date(today); mon.setDate(today.getDate() - ((day + 6) % 7));
+const sun   = new Date(mon);   sun.setDate(mon.getDate() + 6);
+const toISO = d => d.toISOString().slice(0,10);
+document.getElementById('dateFrom').value = toISO(mon);
+document.getElementById('dateTo').value   = toISO(sun);
+</script>
+</body>
+</html>
